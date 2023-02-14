@@ -632,6 +632,60 @@ QUnit.test( "Filter filesizeformat", function( assert ) {
     assert.equal( rendered_template, '16 KB' );
 });
 
+QUnit.test( "Filter pluralize1", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("vote{{ value|pluralize }}", {"value": 0});
+
+    assert.equal( rendered_template, 'votes' );
+});
+
+QUnit.test( "Filter pluralize2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("vote{{ value|pluralize }}", {"value": 1});
+
+    assert.equal( rendered_template, 'vote' );
+});
+
+QUnit.test( "Filter pluralize3", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("vote{{ value|pluralize }}", {"value": 2});
+
+    assert.equal( rendered_template, 'votes' );
+});
+
+QUnit.test( "Filter pluralize4", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("class{{ value|pluralize:'es' }}", {"value": 0});
+
+    assert.equal( rendered_template, 'classes' );
+});
+
+QUnit.test( "Filter pluralize5", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("class{{ value|pluralize:'es' }}", {"value": 1});
+
+    assert.equal( rendered_template, 'class' );
+});
+
+QUnit.test( "Filter pluralize6", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("class{{ value|pluralize:'es' }}", {"value": 2});
+
+    assert.equal( rendered_template, 'classes' );
+});
+
+QUnit.test( "Filter pluralize6", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("cand{{ value|pluralize:'y,ies' }}", {"value": 0});
+
+    assert.equal( rendered_template, 'candies' );
+});
+
+QUnit.test( "Filter pluralize7", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("cand{{ value|pluralize:'y,ies' }}", {"value": 1});
+
+    assert.equal( rendered_template, 'candy' );
+});
+
+QUnit.test( "Filter pluralize8", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("cand{{ value|pluralize:'y,ies' }}", {"value": 2});
+
+    assert.equal( rendered_template, 'candies' );
+});
+
 QUnit.test( "Tag for unpack single element", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% for i in options %}{{ i }}{% endfor %}", {"options": ['option 1', 'option 2', 'option 3', 'option 4']});
 

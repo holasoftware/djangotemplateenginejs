@@ -2916,23 +2916,23 @@ Variable.prototype.resolve = function(context){
 
     if (this.lookups !== null) {
         // We're dealing with a variable that needs to be resolved
-        value = this._resolveLookup(context)
+        value = this._resolveLookup(context);
     } else {
         // We're dealing with a literal,l` so it's already been "resolved"
-        value = this.literal
+        value = this.literal;
     }
 
     if (this.translate){
-        var msgid = value.replace('%', '%%')
+        var msgid = value.replace('%', '%%');
 
         if (this.messageContext){
-            return gettext(msgid, this.messageContext)
+            return gettext(msgid, this.messageContext);
         } else {
-            return gettext(msgid)
+            return gettext(msgid);
         }
     }
 
-    return value
+    return value;
 }
 
 
@@ -5481,8 +5481,7 @@ defaultTemplateLibrary.filter('pluralize', function(input, plural) {
     * If value is 1, cand{{ value|pluralize:"y,ies" }} display "candy".
     * If value is 2, cand{{ value|pluralize:"y,ies" }} display "candies".
 */
-
-    var bits = (typeof plural === 'string' ? plural : 's').split(',')
+    var bits = ((plural === undefined || plural === null) ? 's': plural ).split(',')
 
     if (bits.length > 2) return '';
 
@@ -5497,14 +5496,14 @@ defaultTemplateLibrary.filter('pluralize', function(input, plural) {
 
     if (isNaN(val)){
         val = val.length;
-        if (isNaN(val)) return singular_suffix;
+        if (isNaN(val)) return '';
     }
 
-    if(val !== 1) {
-        return plural_suffix;    
+    if(val === 1) {
+        return singular_suffix;
+    } else {
+        return plural_suffix;
     }
-
-    return singular_suffix;
 }, {
     is_safe: false
 })

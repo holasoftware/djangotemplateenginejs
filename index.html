@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Djando JS Template Tests</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #app {
+            font-family: Arial;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #app > h1 {
+            font-size: 30px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        #form-main .form-input + .form-input {
+            margin-top: 30px;
+        }
+        
+        #form-main .form-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        #form-main {
+            margin-bottom: 10px;
+        }
+
+        #form textarea {
+            margin: 0;
+            padding: 7px 8px;
+            display: inline-block;
+            height: 100px;
+            width: 100%;
+            vertical-align: middle;
+            border: 1px solid #ccc;
+            box-shadow: inset 0 1px 3px #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        #form textarea:focus {
+            outline: 0;
+            border-color: #129FEA;
+        }
+
+        #form .btn {
+          display: inline-block;
+          padding: 6px 12px;
+          margin-bottom: 0;
+          font-size: 14px;
+          font-weight: normal;
+          line-height: 1.5;
+          text-align: center;
+          white-space: nowrap;
+          vertical-align: middle;
+          -ms-touch-action: manipulation;
+              touch-action: manipulation;
+          cursor: pointer;
+          -webkit-user-select: none;
+             -moz-user-select: none;
+              -ms-user-select: none;
+                  user-select: none;
+          background-image: none;
+          border: 1px solid transparent;
+          border-radius: 4px;
+          text-decoration: none;
+        }
+        #form .btn:focus,
+        #form .btn:active:focus {
+          border-color: 1px auto grey;
+        }
+        #form .btn:hover,
+        #form .btn:focus {
+          color: #333;
+          background-color: #e2e2e2;
+        }
+        #form .btn:active {
+          outline: 0;
+          -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+                  box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+        }
+        
+        #output-wrap {
+            margin-top: 35px;
+        }
+        
+        #output-wrap .result-text {
+            font-weight: bold;
+        }
+        
+        #output {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id='app'>
+        <h1>Django JS Template Engine</h1>
+        <div id='form'>
+            <div id='form-main'>
+                <div class='form-input'>
+                    <div class='form-label'>Template:</div>
+                    <textarea id='textarea_template'>Hello {{ var1 }}</textarea>
+                </div>
+                <div class='form-input'>
+                    <div class='form-label'>Template context (Enter JSON) <button id='beautify_json_button' type='button' class='btn'>Beautify JSON</button>
+    </div>
+                    <textarea id='textarea_context'>{
+    "var1": "World!"
+}</textarea>
+                </div>
+            </div>
+            <div id='form-bottom'>
+                <button id='render_button' type='button' class='btn'>Render</button>
+            </div>
+        </div>
+        <div id='output-wrap' style='display: none'>
+            <p class='result-text'>Result:</p>
+            <div id='output'></div>
+        </div>
+    </div>
+    <script src="django_template_engine.js"></script>
+    <script>
+    (function(){
+        var textarea_template_element = document.getElementById('textarea_template');
+        var textarea_template_context_element = document.getElementById('textarea_context');
+        var output_wrap_element = document.getElementById('output-wrap');
+        var output_element = document.getElementById('output');
+
+
+        document.getElementById('beautify_json_button').addEventListener('click', function(e){
+            e.defaultPrevented = true;
+            
+            var context_raw = textarea_template_context_element.value;
+            try {
+                var context = JSON.parse(context_raw);
+            } catch(e){
+                var error_message = 'Invalid JSON:\n' + context_raw;
+                alert(error_message);
+                return;
+            }
+            
+            var beautified_context_raw = JSON.stringify(context, null, 4);
+            textarea_template_context_element.value = beautified_context_raw;
+        });
+
+
+        document.getElementById('render_button').addEventListener('click', function(e){
+            e.defaultPrevented = true;
+            
+            output_element.innerHTML = '';
+
+            var template = textarea_template_element.value;
+            var context_raw = textarea_template_context_element.value;
+
+            try {
+                var template_context = JSON.parse(context_raw);
+            } catch(e){
+                var error_message = 'Invalid JSON:\n' + context_raw;
+                alert(error_message);
+                return;
+            }
+            
+            try{
+                var rendered_template = DjangoTemplateEngine.renderTemplate(template, template_context);
+            } catch(e){
+                output_wrap_element.style.display = 'none';
+
+                var error_message = 'Template Error: ' + e;
+                alert(error_message);
+                return
+            }
+
+            output_wrap_element.style.display = 'block';
+            output_element.innerHTML = rendered_template;
+        })
+    })();
+    </script>
+</body>
+</html>
