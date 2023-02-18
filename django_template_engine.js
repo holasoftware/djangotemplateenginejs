@@ -216,8 +216,10 @@ function objectMerge(obj1, obj2) {
     return obj1;
 }
 
-function copy(obj){
-    return objectMerge({}, obj);
+function copyDict(obj){
+    var new_obj = Object.create(null);
+    
+    return objectMerge(new_obj, obj);
 }
 
 
@@ -369,6 +371,10 @@ function in_operator(x, y) {
     }
   }
   return found
+}
+
+function hasOwnProperty(obj, propertyName){
+    return Object.hasOwnProperty.call(obj, propertyName);
 }
 
 function _(arg){return arg}
@@ -1802,13 +1808,15 @@ ContextPopException.prototype.toString = function(){ return "ContextPopException
  * @param {dict} original context
  */
 
+// TODO: Use maps instead of dictionaries?
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
 
 function Dict(dict){
     this._dict = dict;
 }
 
 Dict.prototype.get = function(key, otherwise){
-    if (this._dict.hasOwnProperty(key)){
+    if (hasOwnProperty(this._dict, key)){
         return this._dict[key];
     } else {
         return otherwise;
@@ -1823,7 +1831,7 @@ Dict.prototype.setDefault = function(key, defaultValue){
     if (defaultValue === undefined)
         defaultValue = null;
 
-    if (this._dict.hasOwnProperty(key)){
+    if (hasOwnProperty(this._dict, key)){
         return this._dict[key];
     } else {
         this._dict[key] = defaultValue;
@@ -1832,7 +1840,7 @@ Dict.prototype.setDefault = function(key, defaultValue){
 }
 
 Dict.prototype.has = function( key ){
-    return this._dict.hasOwnProperty(key);
+    return hasOwnProperty(this._dict, key);
 }
 
 Dict.prototype.delete = function(key){
@@ -1848,7 +1856,7 @@ function BaseContext( dict, deepKeySearch ){
 
 BaseContext.prototype._resetDicts = function(value){
     this.dicts = [DJANGO_TEMPLATE_SETTINGS.CONTEXT_BUILTINS];
-    if (value !== undefined && value !== null) this.dicts.push(value);
+    if (value !== undefined && value !== null) this.dicts.push(copyDict(value));
 }
 
 
@@ -1865,7 +1873,7 @@ BaseContext.prototype.copy = function(){
 
     var dicts = [], dict;
     for (var i =0; i< this.dicts.length; i++){
-       dict = copy(this.dicts[i]);
+       dict = copyDict(this.dicts[i]);
        dicts.push(dict);
     }
     c.dicts = dicts;
@@ -1893,7 +1901,11 @@ BaseContext.prototype.push = function( dict, f ){
     * @param {dict} the new context 
     */
 
-    dict = dict || {};
+    if (dict){
+        dict = copyDict(dict);
+    } else {
+        dict = Object.create(null)
+    }
 
     this.dicts.push(dict);
 
@@ -1930,7 +1942,7 @@ BaseContext.prototype.setDefault = function(key, defaultValue){
 
     var dict = this.dicts[this.dicts.length-1];
   
-    if (dict.hasOwnProperty(key)){
+    if (hasOwnProperty(dict, key)){
         return dict[key];
     } else {
         dict[key] = defaultValue;
@@ -1950,7 +1962,7 @@ BaseContext.prototype.setUpward = function(key, value){
 
     while(i--){
         d = this.dicts[i];
-        if (d.hasOwnProperty(key)){
+        if (hasOwnProperty(d, key)){
             context = d;
             break;
         }
@@ -1966,12 +1978,12 @@ BaseContext.prototype.has = function( key ){
         var dicts = this.dicts;
 
         for (var i =dicts.length; i>=0; i++) {
-            if (dicts[i].hasOwnProperty(key)) return true;
+            if (hasOwnProperty(dicts[i], key)) return true;
         }
 
         return false;
     } else {
-        return this.dicts[this.dicts.length-1].hasOwnProperty(key);
+        return hasOwnProperty(this.dicts[this.dicts.length-1], key);
     }
 }
 
@@ -2025,7 +2037,7 @@ BaseContext.prototype.get = function( key, otherwise ){
 
 
         while( i-- ){
-            if( dicts[i].hasOwnProperty(topKey) ){
+            if( hasOwnProperty(dicts[i], topKey) ){
                 topElement = dicts[i][topKey];
                 found = true;
 
@@ -2034,7 +2046,7 @@ BaseContext.prototype.get = function( key, otherwise ){
         }
     } else {
         var dict = this.dicts[this.dicts.length-1]
-        if (dict.hasOwnProperty(topKey)){
+        if (hasOwnProperty(dict, topKey)){
             topElement = dict[topKey];
             found = true;
         }
@@ -2127,6 +2139,8 @@ Context.prototype.update = function(otherDict){
             throw new TemplateError("Context used to update has length 1");
         otherDict = otherDict.dicts[otherDict.dicts.length -1];
     }
+    
+    otherDict = copyDict(otherDict);
 
     this.dicts.push(otherDict);
 }
@@ -3522,6 +3536,8 @@ PrefixOperator.prototype.evaluate = function(context) {
   }
 }
 
+// Object.keys includes only own, enumerable, string-keyed properties;
+// TODO: Maybe remove?
 var keys = Object.keys || keyshim;
 
 function keyshim(obj) {
@@ -6000,9 +6016,9 @@ var RegroupNode = function(target, expression, var_name){
 
 inherits(RegroupNode, Node);
 
-RegroupNode.prototype.resolveExpression = function(self, obj, context){
+RegroupNode.prototype.resolveExpression = function(obj, context){
     // This method is called for each object in self.target. See regroup() for the reason why we temporarily put the object in the context.
-    context.set(self.var_name, obj)
+    context.set(this.var_name, obj)
     return this.expression.resolve(context, true)
 }
 

@@ -873,3 +873,56 @@ QUnit.test( "Tag verbatim", function( assert ) {
 
     assert.equal( rendered_template, "{% don't process this %}");
 });
+
+
+QUnit.test( "Tag regroup", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate(`{% regroup musicians by instrument as grouped %}<ul>
+{% for group in grouped %}    <li>{{ group.grouper }}
+        <ul>
+            {% for musician in group.list %}<li>{{ musician.name }}</li>{% endfor %}
+        </ul>
+    </li>
+{% endfor %}</ul>`, {
+            'musicians': [
+                {
+                    'name': 'Django Reinhardt',
+                    'instrument': 'Guitar'
+                },
+                {
+                    'name': 'Emily Remler',
+                    'instrument': 'Guitar'
+                },
+                {
+                    'name': 'Lovie Austin',
+                    'instrument': 'Piano'
+                },
+                {
+                    'name': 'Bud Powell',
+                    'instrument': 'Piano'
+                },
+                {
+                    'name': 'Duke Ellington',
+                    'instrument': 'Trumpet'
+                }  
+            ]
+        }
+    );
+
+    assert.equal( rendered_template, `<ul>
+    <li>Guitar
+        <ul>
+            <li>Django Reinhardt</li><li>Emily Remler</li>
+        </ul>
+    </li>
+    <li>Piano
+        <ul>
+            <li>Lovie Austin</li><li>Bud Powell</li>
+        </ul>
+    </li>
+    <li>Trumpet
+        <ul>
+            <li>Duke Ellington</li>
+        </ul>
+    </li>
+</ul>`);
+});

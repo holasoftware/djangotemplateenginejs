@@ -123,7 +123,7 @@
                 </div>
             </div>
             <div id='form-bottom'>
-                <button id='render_button' type='button' class='btn'>Render</button>
+                <button id='reset_button' type='button' class='btn'>Reset</button> <button id='render_button' type='button' class='btn'>Render</button>
             </div>
         </div>
         <div id='output-wrap' style='display: none'>
@@ -134,6 +134,8 @@
     <script src="django_template_engine.js"></script>
     <script>
     (function(){
+        var first_time_rendering_template = true;
+    
         var textarea_template_element = document.getElementById('textarea_template');
         var textarea_template_context_element = document.getElementById('textarea_context');
         var output_wrap_element = document.getElementById('output-wrap');
@@ -160,8 +162,6 @@
         document.getElementById('render_button').addEventListener('click', function(e){
             e.defaultPrevented = true;
             
-            output_element.innerHTML = '';
-
             var template = textarea_template_element.value;
             var context_raw = textarea_template_context_element.value;
 
@@ -176,16 +176,29 @@
             try{
                 var rendered_template = DjangoTemplateEngine.renderTemplate(template, template_context);
             } catch(e){
-                output_wrap_element.style.display = 'none';
-
                 var error_message = 'Template Error: ' + e;
                 alert(error_message);
                 return
             }
 
-            output_wrap_element.style.display = 'block';
+            if (first_time_rendering_template){
+                first_time_rendering_template = false;
+                output_wrap_element.style.display = 'block';
+            }
+            
             output_element.innerHTML = rendered_template;
-        })
+        });
+
+        document.getElementById('reset_button').addEventListener('click', function(e){
+            first_time_rendering_template = true;
+            output_wrap_element.style.display = 'none';
+
+            textarea_template_element.value = '';
+            textarea_template_context_element.value = '{}';
+            output_element.innerHTML = '';
+        });
+        
+        
     })();
     </script>
 </body>

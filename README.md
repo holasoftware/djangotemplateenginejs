@@ -1,14 +1,17 @@
 # Django Template Engine in Javascript
 This is a port of django templates to javascript. 
 
-119 unit tests.
+120 unit tests.
 
 Advantages of using django js template engine:
-- Create AJAX applications using django templates. No need to learn or to use another template engine.
-- You can convert your django applications to AJAX and reuse all your current django templates. This engine makes the transition to AJAX smoother.
-- Less load to the backend because the rendering of the django templates is done in the frontend.
+- You can continue using django templates in the frontend. No need to learn or to use another template engine.
+- Convert more easily your django applications to AJAX and reuse all your current django templates. This template engine makes the transition to AJAX smoother.
+- Less overload in the backend because the server is not rendering the django templates
 
 Demo: https://holasoftware.github.io/djangotemplateenginejs/
+
+## Version
+0.2
 
 ## Getting started
 Include the javascript file:
