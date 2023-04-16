@@ -52,11 +52,21 @@ QUnit.test( "Comment", function( assert ) {
     assert.equal( rendered_template, '');
 });
 
-QUnit.test( "Include tag", function( assert ) {
+QUnit.test( "Include tag1", function( assert ) {
     var engine = new DjangoTemplateEngine({"included_template": "This is included", "base_template": "Testing including another template {% include 'included_template' %}. More here"});
     var rendered_template = engine.renderToString("base_template");
 
     assert.equal( rendered_template, 'Testing including another template This is included. More here' );
+});
+
+QUnit.test( "Include tag with variable inside", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("Testing including another template {% include 'included_template' %}. More here", {
+        'var': 'value'
+    }, null, {
+        "included_template": "This is var included: {{ var }}"
+    });
+
+    assert.equal( rendered_template, 'Testing including another template This is var included: value. More here' );
 });
 
 
@@ -68,13 +78,24 @@ QUnit.test( "Extends tag", function( assert ) {
 });
 
 
-QUnit.test( "Extends with variables inside", function( assert ) {
+QUnit.test( "Extends with variables inside1", function( assert ) {
     var engine = new DjangoTemplateEngine({"base": "variable1 {{var1}} {% block content %}{% endblock %}", "template": "{% extends 'base' %} {% block content %}variable2 {{var2}}{% endblock %}"}, {debug:true});
     var rendered_template = engine.renderToString("template", {"var1": "value1", "var2": "value2"});
 
     assert.equal( rendered_template, 'variable1 value1 variable2 value2' );
 });
 
+QUnit.test( "Extends with variables inside2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% extends 'base' %} {% block content1 %}variable2 {{var2}}{% endblock %} {% block content2 %}another variable {{var3}}{% endblock %}", {
+        "var1": "value1",
+        "var2": "value2",
+        "var3": "value3"
+    }, null, {
+        "base": "variable1 {{var1}} {% block content1 %}{% endblock %} another block {% block content2 %}{% endblock %} end."
+    });
+
+    assert.equal( rendered_template, "variable1 value1 variable2 value2 another block another variable value3 end." );
+});
 
 QUnit.test( "If tag", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% if True %}it's true{% endif %}");
@@ -726,6 +747,12 @@ QUnit.test( "Tag for first variable", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% for i in options %}{% if forloop.first %}First element is {{ i }}{% endif %}{% endfor %}", {"options": [1, 2, 3, 4]});
 
     assert.equal( rendered_template, 'First element is 1');
+});
+
+QUnit.test( "Tag for parentloop", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% for i in options %}{% for j in options %}{{ forloop.parentloop.counter }}{{ forloop.counter }} {% endfor %}{% endfor %}", {"options": [1, 2, 3, 4]});
+
+    assert.equal( rendered_template, '11 12 13 14 21 22 23 24 31 32 33 34 41 42 43 44 ');
 });
 
 QUnit.test( "Tag for last variable", function( assert ) {

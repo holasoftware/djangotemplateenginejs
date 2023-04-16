@@ -2220,9 +2220,9 @@ var TemplateEngine = function(templateSources, options){
     this.templateSources = templateSources || {};
 }
 
-TemplateEngine.renderTemplate = function(template_code, context, options){
-    var engine = new TemplateEngine(null, options);
-    return engine.renderTemplateString(template_code, context)
+TemplateEngine.renderTemplate = function(templateCode, context, options, otherTemplateSources){
+    var engine = new TemplateEngine(otherTemplateSources, options);
+    return engine.renderTemplateString(templateCode, context)
 }
 
 TemplateEngine.addToContextBuiltins = function( dict ){
@@ -2260,12 +2260,12 @@ TemplateEngine.prototype.addLibrary = function(name, library){
     this.templateLibraries[name] = library;    
 }
 
-TemplateEngine.prototype.getTemplateFromString = function(template_code){
+TemplateEngine.prototype.getTemplateFromString = function(templateCode){
     /*
     Return a compiled Template object for the given template code,
     handling template inheritance recursively.
     */
-    return new Template(template_code, null, this);
+    return new Template(templateCode, null, this);
 }
 
 
@@ -2291,8 +2291,8 @@ TemplateEngine.prototype.getTemplate = function(template_name){
     return template
 }
 
-TemplateEngine.prototype.renderTemplateString = function(template_code, context){
-    var t = this.getTemplateFromString(template_code);
+TemplateEngine.prototype.renderTemplateString = function(templateCode, context){
+    var t = this.getTemplateFromString(templateCode);
 
     return t.render(new Context(context)) + ""
 }
@@ -5762,7 +5762,7 @@ ForNode.prototype.toString = function(){
 
 ForNode.prototype.render = function(context){
     var self = this;
-    var parentloop = context.get('forloop',  {});
+    var parentloop = context.get('forloop');
 
     var nodelist = []
 

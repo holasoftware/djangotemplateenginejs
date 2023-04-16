@@ -1,17 +1,17 @@
 # Django Template Engine in Javascript
 This is a port of django templates to javascript. 
 
-120 unit tests.
+123 unit tests.
 
 Advantages of using django js template engine:
 - You can continue using django templates in the frontend. No need to learn or to use another template engine.
-- Convert more easily your django applications to AJAX and reuse all your current django templates. This template engine makes the transition to AJAX smoother.
-- Less overload in the backend because the server is not rendering the django templates
+- Convert more easily your django applications to AJAX and reuse all your current django templates.
+- Less overload in the backend because the server is not doing the work of rendering the templates.
 
 Demo: https://holasoftware.github.io/djangotemplateenginejs/
 
 ## Version
-0.2
+0.3
 
 ## Getting started
 Include the javascript file:
@@ -34,33 +34,23 @@ The source code of the template engine is only one file and has zero dependencie
 
 There is only one variable exported to the global namespace: `DjangoTemplateEngine`
 
-To render a single template, use the function `DjangoTemplateEngine.renderTemplate` like in the 'Hello World!' example before.
+The easy and more direct way to render a template is using the function `DjangoTemplateEngine.renderTemplate` like in the 'Hello World!' example:
 ```js
-DjangoTemplateEngine.renderTemplate(template_code, context, options)
+DjangoTemplateEngine.renderTemplate(templateCode, context, options, otherTemplateSources)
 ```
 
-These are the parameters of `DjangoTemplateEngine.renderTemplate`:
+These are the parameters:
 
-- **template_code:** Template that you want to render
+- **templateCode:** Template that you want to render
 - **context:** (optional) Dictionary of template variables
-- **options:** (optional) Dictionary of options used to create an instance of `DjangoTemplateEngine`
-
-If your template is extending and including other templates using `extend` and `include` tags, create an instance of `DjangoTemplateEngine`:
-```js
-var templateEngineInstance = new DjangoTemplateEngine(templateSources, options)
-```
-
-These are the arguments:
-
-- **templateSources:** A dictionary containing template names and associated template sources.
-- **options:** A dictionary containing these possible options:
+- **options:** (optional) Dictionary of options used to create a django template engine:
     - **autoescape:** Autoescape variables by default. Default: true.
     - **debug:** Enable debugging. Default: false.
     - **libraries:** A dictionary of library names and library instances. To create a library instance, call the function `DjangoTemplateEngine.createTemplateLibrary`. After creating the library instance, you can start adding custom filters and tags. 
     - **string_if_invalid:** String to use if the template variable does not exists.
+- **otherTemplateSources:** (optional) A dictionary containing template names and associated template sources. These other templates could be used for extending a base template or including other templates in the main template.
 
-
-The default context builtins are:
+When rendering, there is some context builtins like in the original django template engine:
 ```
 {
     'True': true,
@@ -75,15 +65,37 @@ DjangoTemplateEngine.addToContextBuiltins( dict )
 ```
 
 
-### Template engine instance methods
-
-In the template engine instance, we have registered one or several templates using the parameter **templateSources** during the creation of the instance. To render a specific template using its name, just use the instance method `renderToString`:
+### Template engine
+If you need to reuse several templates multiple times, it's better for  performance reasons to create a template engine:
 ```js
-engine.renderToString(template_name, context)
+var engine = new DjangoTemplateEngine({
+    'my_template': 'This is a {{ var }}'
+})
+var rendered_template = engine.renderToString('my_template', {
+    'var': 'template variable'
+})
+
+// Output: This is a template variable
+console.log(rendered_template);
 ```
 
-Example:
-- We register 2 templates called "*included_template*" and "*main_template*" (the name of the templates could be anything). The main template is making use of an `include` tag 
+Inside a template engine, the template sources are being parsed and converted to a `Template` object only in the moment of being used for rendering and the created `Template` objects are reused everytime that are necessary to render other templates. For that reason, this is more efficient because no need to parse again the template source and to convert that template source to an internal data structure.
+
+This is the signature of `new DjangoTemplateEngine`:
+```js
+var templateEngineInstance = new DjangoTemplateEngine(templateSources, options)
+```
+
+`templateSources` is a dictionary of template names and template sources.
+
+`options` is exactly like the parameter `options` in the function `DjangoTemplateEngine.renderTemplate` and it's also optional.
+    
+The signature for `engine.renderToString` is:
+```js
+engine.renderToString(templateName, context)
+```
+
+**Example 1**: We register a template "*included_template*" and another one "*main_template*" making use of an `include` tag 
 ```js
 var engine = new DjangoTemplateEngine({
     "included_template": "This is included",
@@ -93,7 +105,7 @@ var engine = new DjangoTemplateEngine({
 var rendered_template = engine.renderToString("main_template");
 ```
 
-- We register 2 templates called "*base_template*" and "*main_template*". The main template is making use of an `extend` tag:
+**Example 2**: We register a template "*base_template*" and another one "*main_template*" making use of an `extend` tag:
 ```js
 var engine = new DjangoTemplateEngine({
     "base_template": "document extended {% block content %}{% endblock %} text from the base template at the footer",
@@ -102,35 +114,40 @@ var engine = new DjangoTemplateEngine({
 var rendered_template = engine.renderToString("main_template");
 ```
 
-To render a template string, use:
+To render a template string using the engine:
 ```js
-engine.renderTemplateString(template_code, context)
+engine.renderTemplateString(templateCode, context)
 ```
 
-To create a template library and register at the same time with a given `name`:
+To create a template library and register at the same time the library with a  `name`:
 ```js
 var library = engine.createLibrary(name)
 ```
 
-Another possibility is to use `DjangoTemplateEngine.createTemplateLibrary` to create a library instance. But in this last case the library is not registered yet. Use the instance method 'addLibrary' of the template engine to register the new library with a given name. Example:
+Another possibility is:
 ```js
 var library = DjangoTemplateEngine.createTemplateLibrary();
+// Register filters and tags to the new library here...
 engine.addLibrary('my_library', library)
 ```
 
-To add a filter to the new library instance:
+We used the function `DjangoTemplateEngine.createTemplateLibrary` to create a library instance, and then we registered later that library to a template engine with the name *my_library*.
+
+To add a filter to the new template library:
 ```js
 library.filter(function filter_name(value, arg, autoescape){
+    // the code of the filter here...
 })
 ```
 
 Optionally you can add flags:
 ```js  
 library.filter(function filter_name(value, arg, autoescape){
+    // the code of the filter here...
 }, flags)
 ```
 
-Available flags are:
+Flags is a dictionary of boolean parameters. Available flags are:
 - needs_autoescape
 - is_safe
 
@@ -138,39 +155,46 @@ Available flags are:
 You can pass explicitly the name of the filter instead of relying in the function name.
 ```js   
 library.filter(filter_name, function(value, arg, autoescape){
+    // the code of the filter here...
 }, flags)
 ```
 
-If the fitler is only manipulating strings, you can use `library.stringfilter` to get automatically a string as a first argument and to return a safe string in case that the original string is safe.
-
+If the filter is only processing strings, you can use `library.stringfilter` to get automatically a string as the first argument of the function and to return automatically a safe string in case that the original argument was also a safe string. Example:
+```js
+library.stringfilter('add_dot', function(str) {
+    return str + '.';
+})
+```
 
 To add a tag:
 ```js
 library.tag(function tag_name(parser, token){
+    // the code of the tag here...
 })
 ```
 
 Or this method signature, in case you want to be explicit with the tag name:
 ```js
 library.tag(tag_name, function(parser, token){
+    // the code of the tag here...
 })
 ```
 
-To register a callable as a compiled template tag:
+To register a callable as a simple template tag:
 ```js
 library.simpleTag(function mytag(arg1, arg2, arg3, ..., kwargs){
-    return 'world'
+    return 'your string...'
 });
 ```
 
-The first arguments provided in the simple tag function are the positional arguments provided when using the tag in the template. The last argument is always the keywords arguments.
+The first arguments provided in the simple tag function are the positional arguments provided when were used the tag in the template. The last argument is always the keywords arguments.
 
 In this example:
 ```js
 {% mytag var1 var2 var3 kwarg1='value1' kwarg2='value2' %}
 ```
 
-the function `mytag` will be called with these paremeters:
+the function `mytag` will be called with these parameters:
 ```js
 mytag(var1, var2, var3, {'kwarg1':'value1', 'kwarg2':'value2'})
 ```
@@ -182,6 +206,10 @@ library.inclusionTag('results.html', function show_results(){
     return {'choices': choices}
 })
 ```
+
+## Tests
+The unit tests are in this file `tests/tests.js` and are based on the library QUnit JS. Reading the tests you also have more examples of the usage of the django template engine.
+
 
 ## Similar projects
 - https://github.com/chrisdickinson/plate
