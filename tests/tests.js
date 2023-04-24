@@ -313,12 +313,6 @@ QUnit.test( "Filter return_arg3", function( assert ) {
     assert.equal( rendered_template, '1234' );
 });
 
-QUnit.test( "Filter capfirst", function( assert ) {
-    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|capfirst }}", {"value":"this is a Value"});
-
-    assert.equal( rendered_template, 'This is a Value' );
-});
-
 
 QUnit.test( "Filter cut", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|cut:'a' }}", {"value":"abraacaadraaabraaa"});
@@ -356,6 +350,18 @@ QUnit.test( "Filter upper", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|upper }}", {"value":"this is a Value"});
 
     assert.equal( rendered_template, 'THIS IS A VALUE' );
+});
+
+QUnit.test( "Filter capfirst", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|capfirst }}", {"value":"this is a Value"});
+
+    assert.equal( rendered_template, 'This is a Value' );
+});
+
+QUnit.test( "Channing lower and capfirst filters", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|lower|capfirst }}", {"value":"this is a Value"});
+
+    assert.equal( rendered_template, 'This is a value' );
 });
 
 QUnit.test( "Filter wordcount", function( assert ) {
@@ -593,6 +599,12 @@ QUnit.test( "Filter reverse", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|reverse }}", {"value":['first item', 'second item', 'third item']});
 
     assert.equal( rendered_template, 'third item,second item,first item' );
+});
+
+QUnit.test( "Filter repeat_arr", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|repeat_arr:3 }}", {"value":'item'});
+
+    assert.equal( rendered_template, 'item,item,item' );
 });
 
 QUnit.test( "Filter length", function( assert ) {

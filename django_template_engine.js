@@ -29,24 +29,22 @@ compilation and rendering.
 
 Usage:
 
-The only thing you should ever use directly in this file is the Template class.
 Create a compiled template object with a template_string, then call render()
 with a context. In the compilation stage, the TemplateSyntaxError exception
 will be raised if the template doesn't have proper syntax.
 
 Sample code:
 
->>> from django import template
 >>> s = '<html>{% if test %}<h1>{{ varvalue }}</h1>{% endif %}</html>'
->>> t = template.Template(s)
+>>> t = DjangoTemplateEngine.getTemplateFromString(s)
 
 (t is now a compiled template, and its render() method can be called multiple
 times with multiple contexts)
 
->>> c = template.Context({'test':true, 'varvalue': 'Hello'})
+>>> c = new DjangoTemplateEngine.Context({'test':true, 'varvalue': 'Hello'})
 >>> t.render(c)
 '<html><h1>Hello</h1></html>'
->>> c = template.Context({'test':false, 'varvalue': 'Hello'})
+>>> c = new DjangoTemplateEngine.Context({'test':false, 'varvalue': 'Hello'})
 >>> t.render(c)
 '<html></html>'
 */
@@ -270,6 +268,16 @@ function slice_list(value, start, stop, step){
 
     return result;
 }
+
+
+var repeat = function(ele, num) {
+  var arr = new Array(num);
+  for (var i = 0; i < num; i++) {
+    arr[i] = ele;
+  }
+
+  return arr;
+};
 
 
 var multilineFuncString = function(f){
@@ -1321,6 +1329,17 @@ function escapeHtml2(val) {
     return val.replace(escapeHtmlRe, function(s){return escapeMap[s]});
 }
 
+// TODO: To choose escape regex function
+
+var matchOperatorsRe = /[|\\{}()\[\]^$+*?\.]/g;
+var escapeRegString = function (str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('Expected a string');
+  }
+
+  return str.replace(matchOperatorsRe, '\\$&');
+};
+
 
 var SPECIAL_REGEX_CHARS = '\\.{}[]().+*-?:^$|';
 var SPECIAL_REGEX_CHARS_RE = new RegExp("([" + SPECIAL_REGEX_CHARS.replace(/(.)/g, '\\$1') + "])", "g");
@@ -2305,6 +2324,8 @@ TemplateEngine.prototype.renderToString = function(template_name, context){
 
     return t.render(new Context(context)) + ""
 }
+
+TemplateEngine.Context = Context;
 
 
 // Globals
@@ -4550,16 +4571,6 @@ defaultTemplateLibrary.stringfilter('addslashes', function(str) {
     is_safe: true
 })
 
-defaultTemplateLibrary.stringfilter('capfirst', function(str) {
-  /* Capitalize the first character of the value.*/
-
-  // str[0].toUpperCase() + str.substr(1).toLowerCase();
-  return str[0].toUpperCase() + str.substr(1)
-}, {
-    is_safe: true
-})
-
-
 defaultTemplateLibrary.stringfilter('escapejs', function(str) {
     // Hex encode characters for use in JavaScript strings.
     return escapeJs(str)
@@ -4677,6 +4688,16 @@ defaultTemplateLibrary.stringfilter('lower', function(str) {
 defaultTemplateLibrary.stringfilter('upper', function(str) {
     // Convert a string into all uppercase.
     return str.toUpperCase()
+}, {
+    "is_safe": false,
+})
+
+
+defaultTemplateLibrary.stringfilter('capfirst', function(str) {
+    /* Capitalize the first character of the value.*/
+
+    // return str[0].toUpperCase() + str.substr(1)
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }, {
     "is_safe": false,
 })
@@ -5131,6 +5152,12 @@ defaultTemplateLibrary.filter('length', function(value) {
   // Return the length of the value - useful for lists
 
     return value.length === undefined ? 0: value.length;
+}, {
+    "is_safe": false,
+});
+
+defaultTemplateLibrary.filter('repeat_arr', function(value, arg) {
+    return repeat(value, arg);
 }, {
     "is_safe": false,
 });
