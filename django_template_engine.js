@@ -100,6 +100,7 @@ function getOrDefault(value, default_value){
     return value;
 }
 
+var isNumber = function(value) {return typeof value === 'number';}
 var isString = function(value) {return typeof value === 'string';}
 // TODO: isSymbol. There is a better way?
 var isSymbol = function(value) {return typeof value === 'symbol';}
@@ -162,7 +163,7 @@ function __import(obj, src){
 }
 
 var objectGetPath = function( obj, path ){
-    var p = Array.isArray(path) ? path : path.split(".");
+    var p = isArray(path) ? path : path.split(".");
     for( var i=0, j=p.length; i<j; ++i )
     if( !(obj = obj[ p[ i ] ]) )
         break;
@@ -292,7 +293,7 @@ var inherits = (function () {
         if (Object.create){
             C.prototype =  Object.create( P.prototype, {
                 constructor: {
-                  value: C,
+                    value: C,
                 },
                 __super__: {
                     value: P.prototype
@@ -797,21 +798,21 @@ var LoremIpsum = (function(){
 
 
 const JS_ESCAPE = {
-  '\\': '\\u005C',
-  "'": '\\u0027',
-  '"': '\\u0022',
-  '>': '\\u003E',
-  '<': '\\u003C',
-  '&': '\\u0026',
-  '=': '\\u003D',
-  '-': '\\u002D',
-  '`': '\\u0060',
-  '\n': '\\u000A',
-  '\r': '\\u000D',
-  '\t': '\\u0009',
-  '\v': '\\u000B',
-  '\f': '\\u000C',
-  '\b': '\\u0008'
+    '\\': '\\u005C',
+    "'": '\\u0027',
+    '"': '\\u0022',
+    '>': '\\u003E',
+    '<': '\\u003C',
+    '&': '\\u0026',
+    '=': '\\u003D',
+    '-': '\\u002D',
+    '`': '\\u0060',
+    '\n': '\\u000A',
+    '\r': '\\u000D',
+    '\t': '\\u0009',
+    '\v': '\\u000B',
+    '\f': '\\u000C',
+    '\b': '\\u0008'
 };
 
 // Escape paragraph and line separator
@@ -820,7 +821,7 @@ JS_ESCAPE[String.fromCharCode(parseInt(`2029`, 16))] = `\\u2029`;
 
 // Escape every ASCII character with a value less than 32.
 for (let i = 0; i < 32; i += 1) {
-  JS_ESCAPE[String.fromCharCode(parseInt(`${i}04X`, 16))] = `\\u${i}04X`;
+    JS_ESCAPE[String.fromCharCode(parseInt(`${i}04X`, 16))] = `\\u${i}04X`;
 }
 
 var escapeJs = function(value){
@@ -1225,15 +1226,67 @@ DateTimeFormat.prototype.Z = function() {
 }
 
 function date_time_format(value, format_string) {
-    var df = new DateTimeFormat(value)
-    return df.format(format_string)
+    var df = new DateTimeFormat(value);
+    return df.format(format_string);
 }
 
 function time_format(value, format_string) {
-    var tf = new TimeFormat(value)
-    return tf.format(format_string)
+    var tf = new TimeFormat(value);
+    return tf.format(format_string);
 }
 
+var isDigitRe = /^\d+$/;
+var parseDateValue = function(value){
+    var d;
+    
+    if(value instanceof Date) {
+        return value;
+    } else if (isString(value)){
+        if (isDigitRe.test(value)){
+            value = parseInt(value);
+            d = new Date(value);
+        } else {
+            d = new Date(value);
+            if (isNaN(d.valueOf())) return null;
+        }
+    } else if(isNumber(value)){
+        d = new Date(value);
+    } else if(isArray(value)){
+        if (value.length === 0){
+            d = new Date();
+        } else if (value.length === 1){
+            d = new Date(value[0]);
+        } else if (value.length === 2){
+            d = new Date(value[0], value[1]);
+        } else if (value.length === 3){
+            d = new Date(value[0], value[1], value[2]);
+        } else if (value.length === 4){
+            d = new Date(value[0], value[1], value[2], value[3]);
+        } else if (value.length === 5){
+            d = new Date(value[0], value[1], value[2], value[3], value[4]);
+        } else if (value.length === 6){
+            d = new Date(value[0], value[1], value[2], value[3], value[4], value[5]);
+        } else if (value.length === 7){
+            d = new Date(value[0], value[1], value[2], value[3], value[4], value[5], value[6]);
+        } else {
+            return null;
+        }
+    } else if(isObject(value)){
+        var year = value.year || 0;
+        var monthIndex = value.monthIndex || 0;
+        var day = value.day || 1;
+        var hours = value.hours || 0;
+        var minutes = value.minutes || 0;
+        var seconds = value.seconds || 0;
+        var milliseconds = value.milliseconds || 0;
+
+        d = new Date(year, monthIndex, day, hours, minutes, seconds, milliseconds);
+    } else {
+        return null;
+    }
+    
+    return d;
+}
 
 var floatformat = function(number, arg){
     if (arg === 0)
@@ -2481,6 +2534,7 @@ DebugLexer.prototype.tokenize = function(){
     var result = [];
     var upto = 0;
 
+    tag_re.lastIndex = 0;
     matchAll(this.templateString, tag_re, function(m){
         var start = m.index;
         var end = m.index + m[0].length;
@@ -2765,6 +2819,8 @@ var FilterExpression = function(token, parser){
     var filters = [];
     var upto = 0;
 
+    filter_re.lastIndex = 0;
+    
     matchAll(token, filter_re, function(m){
         var start = m.index;
         if (upto != start){
@@ -3189,17 +3245,30 @@ var tag_re = new RegExp(tag_re_source, "g");
     return this;
   };
 **/
+
 function TemplateError(message) {
-  var err = new Error(message);
-
-  Object.defineProperty(err, 'name', {
-    value: this.constructor.name,
-  });
-
-  return err;
+    var error = new Error(message);
+    var error_name = this.constructor.name;
+    
+    Object.defineProperty(error, 'name', {
+        value: error_name
+    });
+    
+    Object.setPrototypeOf(error, Object.getPrototypeOf(this))
+    
+    return error;
 }
 
 inherits(TemplateError, Error);
+
+
+// TemplateError.prototype.toString = function(){ return this.name + ": " + this.message; }
+
+
+var InvalidTemplateLibraryError = function( libraryName ){
+    InvalidTemplateLibraryError.baseConstructor.call(this, 'Invalid template library: ' + libraryName);
+}
+inherits(InvalidTemplateLibraryError, TemplateError);
 
 
 var TemplateDoesNotExistError = function( template_name ){
@@ -3679,7 +3748,8 @@ var Literal = function(value) {
     A basic self-resolvable object similar to a Django template variable.
     
     IfParser uses Literal in createVar, but TemplateIfParser overrides createVar so that a proper implementation that actually resolves variables, filters etc. is used. */
-    this.value = value;}
+    this.value = value;
+}
 
 inherits(Literal, TokenBase);
 
@@ -3791,17 +3861,6 @@ IfParser.prototype.expression = function(rbp) {
 IfParser.prototype.createVar = function(value){
     return new Literal(value);
 }
-
-
-var InvalidTemplateLibrary = function( message ){
-    this.name = "InvalidTemplateLibrary";
-    this.message = message;
-
-    InvalidTemplateLibrary.baseConstructor.call(this);
-}
-
-inherits(InvalidTemplateLibrary, Error);
-InvalidTemplateLibrary.prototype.toString = function(){ return this.name + ": " + this.message; }
 
 
 var Library = function() {
@@ -5326,12 +5385,15 @@ defaultTemplateLibrary.filter('get_digit', function(value, arg) {
 /******************/
 
 defaultTemplateLibrary.filter('time', function(value, arg) {
-   // Format a time according to the given format.
+    // Format a time according to the given format.
+
+    var value = parseDateValue(value);
+    if (value === null) throw new TemplateError("Filter value is not a valid date.");
+
     if (arg === undefined || arg === null){
-        arg = DJANGO_TEMPLATE_SETTINGS.DEFAULT_TIME_FORMAT
+        arg = DJANGO_TEMPLATE_SETTINGS.DEFAULT_TIME_FORMAT;
     }
 
-    var value = new Date(value);
     return time_format(value, arg);
 }, {
     "is_safe": false
@@ -5339,22 +5401,39 @@ defaultTemplateLibrary.filter('time', function(value, arg) {
 
 
 defaultTemplateLibrary.filter('timesince', function(value, arg) {
-   // Format a date as the time until that date (i.e. "4 days, 6 hours").
-  var value = new Date(value);
+    // Format a date as the time until that date (i.e. "4 days, 6 hours").
+    var value = parseDateValue(value);
+    if (value === null) throw new TemplateError("Filter value is not a valid date.");
 
-  var now = arg === undefined ? new Date() : new Date(arg);
-  return timesince(value, now)
+
+    var now;
+    if (arg === undefined || arg === null){
+        now = new Date();
+    } else {
+        now = parseDateValue(arg);
+        if (now === null) throw new TemplateError("Filter argument is not a valid date.");
+    }
+
+    return timesince(value, now)
 }, {
     "is_safe": false
 })
 
 
 defaultTemplateLibrary.filter('timeuntil', function(value, arg) {
-   // Format a date as the time until that date (i.e. "4 days, 6 hours").
-  var value = new Date(value);
+    // Format a date as the time until that date (i.e. "4 days, 6 hours").
+    var value = parseDateValue(value);
+    if (value === null) throw new TemplateError("Filter value is not a valid date.");
 
-  var now = arg === undefined ? new Date() : new Date(arg);
-  return timesince(now, value)
+    var now;
+    if (arg === undefined || arg === null){
+        now = new Date();
+    } else {
+        now = parseDateValue(arg);
+        if (now === null) throw new TemplateError("Filter argument is not a valid date.");
+    }
+  
+    return timesince(now, value)
 }, {
     "is_safe": false
 })
@@ -5362,12 +5441,13 @@ defaultTemplateLibrary.filter('timeuntil', function(value, arg) {
 
 defaultTemplateLibrary.filter('date', function(value, arg) {
     // Format a date according to the given format.
-
-    if (arg === undefined){
+    var value = parseDateValue(value);
+    if (value === null) throw new TemplateError("Filter value is not a valid date.");
+ 
+    if (arg === undefined || arg === null){
         arg = DJANGO_TEMPLATE_SETTINGS.DEFAULT_DATE_TIME_FORMAT;
     }
-
-    var value = new Date(value);
+    
     return date_time_format(value, arg);
 }, {
     "is_safe": false
@@ -5553,7 +5633,7 @@ defaultTemplateLibrary.filter('pluralize', function(input, plural) {
 
 
 defaultTemplateLibrary.filter('phone2numeric', function(value) {
-  // Take a phone number and converts it in to its numerical equivalent.
+    // Take a phone number and converts it in to its numerical equivalent.
 
     var LETTERS = {
         'a': '2', 'b': '2', 'c': '2', 'd': '3', 'e': '3',
@@ -5567,7 +5647,7 @@ defaultTemplateLibrary.filter('phone2numeric', function(value) {
         , ltr;
 
     while(str.length) {
-        ltr = str.pop()
+        ltr = str.pop();
         out.unshift(LETTERS[ltr] ? LETTERS[ltr] : ltr);
     }
 
@@ -5728,7 +5808,7 @@ FilterNode.prototype.render = function(context){
 
 
 var FirstOfNode = function(variables, asvar){
-    this.variables = variables;
+    this.vars = variables;
     this.asvar = asvar || null;
 
     FirstOfNode.baseConstructor.call(this);
@@ -5754,7 +5834,7 @@ FirstOfNode.prototype.render = function(context){
         return '';
     }
 
-    return first
+    return first;
 }
 
 var ForNode = function(loopvars, sequence, is_reversed, nodelist_loop, nodelist_empty){
@@ -6092,7 +6172,7 @@ var NowNode = function(format_string, asvar){
 inherits(NowNode, Node);
 
 NowNode.prototype.render = function(context){
-    var formatted = date(new Date(), this.format_string);
+    var formatted = date_time_format(new Date(), this.format_string);
 
     if (this.asvar){
         context.set(this.asvar, formatted);
@@ -7345,6 +7425,10 @@ defaultTemplateLibrary.tag('with', function(parser, token){
 
     return new WithNode(null, null, nodelist, extra_context);
 });
+
+TemplateEngine.TemplateError = TemplateError;
+TemplateEngine.TemplateSyntaxError = TemplateSyntaxError;
+TemplateEngine.TemplateDoesNotExistError = TemplateDoesNotExistError;
 
 global.DjangoTemplateEngine = TemplateEngine;
 

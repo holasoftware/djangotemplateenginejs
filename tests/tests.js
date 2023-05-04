@@ -1,3 +1,25 @@
+var patch_date_object = function(f){
+    var oldDate = Date;
+    Date = function(){
+        this.t = new oldDate(0);
+    }
+    Object.getOwnPropertyNames(oldDate.prototype).forEach(function(propName){
+        if (propName === 'constructor') return;
+        
+        Date.prototype[propName] = function(){
+            return this.t[propName].apply(this.t, arguments);
+        }    
+    });
+    Date.name = oldDate.name;
+    Date.now = oldDate.now;
+    Date.parse = oldDate.parse;
+    Date.UTC = oldDate.UTC;
+
+    f(function(){
+        Date = oldDate;
+    });
+}
+
 QUnit.test( "Template does not exist", function( assert ) {
     assert.throws( function(){
         var engine = new DjangoTemplateEngine();
@@ -264,9 +286,14 @@ QUnit.test( "If/Elif tag", function( assert ) {
     assert.equal( rendered_template, "second if");
 });
 
-QUnit.test( "If/Elif/Else tag", function( assert ) {
+QUnit.test( "If/Elif/Else tag1", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% if False %}first if{% elif False %}second if{% else %}else clause{% endif %}");
     assert.equal( rendered_template, "else clause");
+});
+
+QUnit.test( "If/Elif/Else tag2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% if False %}first if{% elif True %}second if{% else %}else clause{% endif %}");
+    assert.equal( rendered_template, "second if");
 });
 
 QUnit.test( "Ifequal tag1", function( assert ) {
@@ -287,6 +314,18 @@ QUnit.test( "Ifnotequal tag1", function( assert ) {
 QUnit.test( "Ifnotequal tag2", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% ifnotequal a 'another value' %}It's not equal{% endifnotequal %}", {'a': 'value'});
     assert.equal( rendered_template, "It's not equal");
+});
+
+QUnit.test( "Invalid tag", function( assert ) {
+    assert.throws( function(){
+        DjangoTemplateEngine.renderTemplate("{% invalid_tag %}");
+    }, new DjangoTemplateEngine.TemplateSyntaxError("Invalid block tag on line 1: 'invalid_tag'. Did you forget to register or load this tag?"));
+});
+
+QUnit.test( "Invalid filter", function( assert ) {
+    assert.throws( function(){
+        DjangoTemplateEngine.renderTemplate("{{ arg|invalid_filter }}");
+    }, new DjangoTemplateEngine.TemplateSyntaxError("Invalid filter: 'invalid_filter'"));
 });
 
 QUnit.test( "Filter noop", function( assert ) {
@@ -422,6 +461,18 @@ QUnit.test( "Filter make_list2", function( assert ) {
     assert.equal( rendered_template, '1,2,3,4' );
 });
 
+
+QUnit.test( "Filter random", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ my_list|random }}", {"my_list": [1, 2, 3, 4]});
+
+    assert.true( '1234'.indexOf(rendered_template) !== -1);
+});
+
+QUnit.test( "Filter iriencode", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ 'this is a path'|iriencode }}");
+
+    assert.equal( rendered_template, 'this%20is%20a%20path' );
+});
 
 QUnit.test( "Filter linenumbers", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{{ text|linenumbers }}", {"text": "one line\n another line\n\nmore lines here...\nand finally this"});
@@ -659,10 +710,16 @@ QUnit.test( "Filter add", function( assert ) {
     assert.equal( rendered_template, '15' );
 });
 
-QUnit.test( "Filter filesizeformat", function( assert ) {
+QUnit.test( "Filter filesizeformat1", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|filesizeformat }}", {"value": 16761});
 
     assert.equal( rendered_template, '16 KB' );
+});
+
+QUnit.test( "Filter filesizeformat2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|filesizeformat }}", {"value": 39237394});
+
+    assert.equal( rendered_template, '37 MB' );
 });
 
 QUnit.test( "Filter pluralize1", function( assert ) {
@@ -717,6 +774,83 @@ QUnit.test( "Filter pluralize8", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("cand{{ value|pluralize:'y,ies' }}", {"value": 2});
 
     assert.equal( rendered_template, 'candies' );
+});
+
+ 
+QUnit.test( "Filter divisibleby1", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% if 10|divisibleby:2 %}1{% else %}0{% endif %}");
+
+    assert.equal( rendered_template, '1');
+});   
+
+QUnit.test( "Filter divisibleby2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% if '15'|divisibleby:5 %}1{% else %}0{% endif %}");
+
+    assert.equal( rendered_template, '1');
+});  
+
+QUnit.test( "Filter divisibleby3", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% if 9|divisibleby:'3' %}1{% else %}0{% endif %}");
+
+    assert.equal( rendered_template, '1');
+});  
+
+QUnit.test( "Filter divisibleby4", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% if 10|divisibleby:'3' %}1{% else %}0{% endif %}");
+
+    assert.equal( rendered_template, '0');
+}); 
+
+
+QUnit.test( "Filter default_if_none", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ arg|default_if_none:'default_value' }}", {'arg': null});
+
+    assert.equal( rendered_template, 'default_value');
+});  
+
+
+QUnit.test( "Filter default1", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{arg|default:'default_value'}}");
+
+    assert.equal( rendered_template, 'default_value');
+});
+    
+QUnit.test( "Filter default2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{arg|default:default_value}}", {default_value: 4});
+
+    assert.equal( rendered_template, '4');
+});
+
+QUnit.test( "Filter time", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|time }}", {
+        'value': 0
+    });
+
+    assert.equal( rendered_template, '16:00:00');
+});
+
+QUnit.test( "Filter timesince", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|timesince:5000 }}", {
+        'value': 0
+    });
+
+    assert.equal( rendered_template, '53 years, 4 months');
+});
+
+QUnit.test( "Filter timeuntil", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|timeuntil:0 }}", {
+        'value': 5000
+    });
+
+    assert.equal( rendered_template, '53 years, 4 months');
+});
+
+QUnit.test( "Filter date", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{ value|date }}", {
+        'value': 0
+    });
+
+    assert.equal( rendered_template, '31 Dec., 4:00:pm');
 });
 
 QUnit.test( "Tag for unpack single element", function( assert ) {
@@ -797,6 +931,12 @@ QUnit.test( "Tag cycle", function( assert ) {
     assert.equal( rendered_template, 'item1item2item3item4');
 });
 
+QUnit.test( "Tag resetcycle", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% for o in list %}{% cycle 'item1' 'item2' 'item3' 'item4' %}{% if o == 2 %}{% resetcycle %}{% endif %}{% endfor %}", {'list': [1, 2, 3, 4]});
+
+    assert.equal( rendered_template, 'item1item2item1item2');
+});
+
 QUnit.test( "Tag widthratio", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% widthratio this_value max_value max_width %}", {'this_value': 175, 'max_value': 200 , 'max_width': 100});
 
@@ -807,6 +947,12 @@ QUnit.test( "Tag autoescape", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("{% autoescape off %}{{ html }}{% endautoescape %}", {'html': '<h1>this is a test</h1>'});
 
     assert.equal( rendered_template, '<h1>this is a test</h1>');
+});
+
+QUnit.test( "Nested tag autoescape", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% autoescape off %}{% autoescape on %}{{ html }}{% endautoescape %}{% endautoescape %}", {'html': '<h1>this is a test</h1>'});
+
+    assert.equal( rendered_template, '&lt;h1&gt;this is a test&lt;/h1&gt;');
 });
 
 QUnit.test( "Tag load1", function( assert ) {
@@ -964,4 +1110,42 @@ QUnit.test( "Tag regroup", function( assert ) {
         </ul>
     </li>
 </ul>`);
+});
+
+
+QUnit.test( "Tag firstof1", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% firstof var1 var2 var3 as myvar %}{{ myvar }}", {
+       'var2': 'something'
+    });
+
+    assert.equal( rendered_template, 'something');
+});   
+   
+
+QUnit.test( "Tag firstof2", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% firstof var1 var2 var3 'fallback value' %}");
+
+    assert.equal( rendered_template, 'fallback value');
+});
+
+
+QUnit.test( "Tag firstof3", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% firstof var1 var2 var3 %}", {
+       'var1': false,
+       'var3': null,
+       'var3': 0
+    });
+
+    assert.equal( rendered_template, '');
+});
+
+
+QUnit.test( "Tag now", function( assert ) {
+    patch_date_object(function(unpatch){
+        var rendered_template = DjangoTemplateEngine.renderTemplate('{% now "jS F Y H:i" %}');
+        
+        unpatch();
+
+        assert.equal( rendered_template, '31st December 1969 16:00');
+    });
 });
