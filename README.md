@@ -1,17 +1,17 @@
 # Django Template Engine in Javascript
 This is a port of django templates to javascript. 
 
-148 unit tests.
+155 unit tests.
 
 Advantages of using django js template engine:
 - You can continue using django templates in the frontend. No need to learn or to use another template engine.
-- Convert more easily your django applications to AJAX and reuse all your current django templates.
+- Convert more easily your django applications to AJAX rendering all your current django templates directly to the frontend.
 - Less overload in the backend because the server is not doing the work of rendering the templates.
 
 Demo: https://holasoftware.github.io/djangotemplateenginejs/
 
 ## Version
-0.5
+0.6
 
 ## Getting started
 Include the javascript file:
@@ -36,19 +36,19 @@ There is only one variable exported to the global namespace: `DjangoTemplateEngi
 
 The easy and more direct way to render a template is using the function `DjangoTemplateEngine.renderTemplate` like in the 'Hello World!' example:
 ```js
-DjangoTemplateEngine.renderTemplate(templateCode, context, options, otherTemplateSources)
+DjangoTemplateEngine.renderTemplate(templateCode, context, otherTemplateSources, templateEngineOptions)
 ```
 
 These are the parameters:
 
 - **templateCode:** Template that you want to render
 - **context:** (optional) Dictionary of template variables
-- **options:** (optional) Dictionary of options used to create a django template engine:
+- **otherTemplateSources:** (optional) A dictionary containing template names and associated template sources. These other templates could be used for extending a base template or including other templates in the main template.
+- **templateEngineOptions:** (optional) Dictionary of options used to create a django template engine:
     - **autoescape:** Autoescape variables by default. Default: true.
     - **debug:** Enable debugging. Default: false.
     - **libraries:** A dictionary of library names and library instances. To create a library instance, call the function `DjangoTemplateEngine.createTemplateLibrary`. After creating the library instance, you can start adding custom filters and tags. 
     - **string_if_invalid:** String to use if the template variable does not exists.
-- **otherTemplateSources:** (optional) A dictionary containing template names and associated template sources. These other templates could be used for extending a base template or including other templates in the main template.
 
 When rendering, there is some context builtins like in the original django template engine:
 ```

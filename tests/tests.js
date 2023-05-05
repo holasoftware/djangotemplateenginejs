@@ -51,7 +51,7 @@ QUnit.test( "Variable does not exists", function( assert ) {
 });
 
 QUnit.test( "Variable does not exists, return option 'string_if_invalid'", function( assert ) {
-    var rendered_template = DjangoTemplateEngine.renderTemplate("{{this_var_does_not_exist}}", null, {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{{this_var_does_not_exist}}", null, null, {
         string_if_invalid: 'invalid string'
     });
     assert.equal( rendered_template, 'invalid string' );
@@ -74,34 +74,100 @@ QUnit.test( "Comment", function( assert ) {
     assert.equal( rendered_template, '');
 });
 
-QUnit.test( "Include tag1", function( assert ) {
-    var engine = new DjangoTemplateEngine({"included_template": "This is included", "base_template": "Testing including another template {% include 'included_template' %}. More here"});
+QUnit.test( "Include tag only text", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "included_template": "This is included",
+        "base_template": "Testing including another template {% include 'included_template' %}. More here"});
     var rendered_template = engine.renderToString("base_template");
 
     assert.equal( rendered_template, 'Testing including another template This is included. More here' );
 });
 
+QUnit.test( "Include tag with text 2 times", function( assert ) {
+    var engine = new DjangoTemplateEngine({"included_template1": "This text is included in another template and a second template '{% include 'included_template2' %}' is also included",
+    "included_template2": "This is included", 
+    "base_template": "Testing including this: {% include 'included_template1' %}. More text here"});
+    var rendered_template = engine.renderToString("base_template");
+
+    assert.equal( rendered_template, "Testing including this: This text is included in another template and a second template 'This is included' is also included. More text here" );
+});
+
 QUnit.test( "Include tag with variable inside", function( assert ) {
     var rendered_template = DjangoTemplateEngine.renderTemplate("Testing including another template {% include 'included_template' %}. More here", {
         'var': 'value'
-    }, null, {
+    }, {
         "included_template": "This is var included: {{ var }}"
     });
 
     assert.equal( rendered_template, 'Testing including another template This is var included: value. More here' );
 });
 
+QUnit.test( "Include tag 2 times with variables inside", function( assert ) {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("Testing include tag with vars inside: {% include 'included_template1' %}. More text here...", {
+        'var1': 'value1',
+        'var2': 'value2',
+        'var3': 'value3',
+        'var4': 'value4',
+        'var5': 'value5'
+    }, {
+        "included_template1": "Var1 {{ var1 }} {% include 'included_template2' %} Var4 {{ var4 }} Var5 {{ var5 }}",
+        "included_template2": "Var2 {{ var2 }} Var3 {{ var3 }}"
+    });
 
-QUnit.test( "Extends tag", function( assert ) {
-    var engine = new DjangoTemplateEngine({"base": "document extended {% block content %}{% endblock %} text from the base template at the footer", "template": "{% extends 'base' %} {% block content %}text here...{% endblock %}"}, {debug:true});
-    var rendered_template = engine.renderToString("template");
+    assert.equal( rendered_template, 'Testing include tag with vars inside: Var1 value1 Var2 value2 Var3 value3 Var4 value4 Var5 value5. More text here...' );
+});
+
+QUnit.test( "Extends tag empty block", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "base": "document extended {% block content %}{% endblock %} text from the base template at the footer",
+        "main_template": "{% extends 'base' %} {% block content %}text here...{% endblock %}"});
+    var rendered_template = engine.renderToString("main_template");
 
     assert.equal( rendered_template, 'document extended text here... text from the base template at the footer' );
 });
 
+QUnit.test( "Extends tag block super1", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "base": "{% block content %}base text{% endblock %}",
+        "main_template": "{% extends 'base' %}{% block content %}{{ block.super }}{% endblock %}"});
+    var rendered_template = engine.renderToString("main_template");
+
+    assert.equal( rendered_template, 'base text' );
+});
+
+QUnit.test( "Extends tag block super2", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "base": "{% block content %}base text{% endblock %}",
+        "main_template": "{% extends 'base' %}{% block content %}extra text... {{ block.super }}. end of block{% endblock %}"});
+    var rendered_template = engine.renderToString("main_template");
+
+    assert.equal( rendered_template, 'extra text... base text. end of block' );
+});
+
+QUnit.test( "Extends tag 2 times1", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "base1": "<header>{% block header %}{% endblock %}</header><body>{% block body %}{% endblock %}</body>",
+        "base2": "{% extends 'base1' %} {% block body %}text here...{% endblock %}",
+        "main_template": "{% extends 'base2' %}{% block header %}this is the header{% endblock %}  {% block body %}other text here...{% endblock %}"     
+        });
+    var rendered_template = engine.renderToString("main_template");
+
+    assert.equal( rendered_template, '<header>this is the header</header><body>other text here...</body>' );
+});
+
+QUnit.test( "Extends tag 2 times2", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "base1": "<header>{% block header %}base header{% endblock %}</header><body>{% block body %}base body{% endblock %}</body>",
+        "base2": "{% extends 'base1' %} {% block body %}{{ block.super }}...text here...{% endblock %}",
+        "main_template": "{% extends 'base2' %}{% block header %}{{ block.super }}...adding more header{% endblock %}  {% block body %}{{ block.super }}more text here...{% endblock %}"     
+        });
+    var rendered_template = engine.renderToString("main_template");
+
+    assert.equal( rendered_template, '<header>base header...adding more header</header><body>base body...text here...more text here...</body>' );
+});
 
 QUnit.test( "Extends with variables inside1", function( assert ) {
-    var engine = new DjangoTemplateEngine({"base": "variable1 {{var1}} {% block content %}{% endblock %}", "template": "{% extends 'base' %} {% block content %}variable2 {{var2}}{% endblock %}"}, {debug:true});
+    var engine = new DjangoTemplateEngine({"base": "variable1 {{var1}} {% block content %}{% endblock %}", "template": "{% extends 'base' %} {% block content %}variable2 {{var2}}{% endblock %}"});
     var rendered_template = engine.renderToString("template", {"var1": "value1", "var2": "value2"});
 
     assert.equal( rendered_template, 'variable1 value1 variable2 value2' );
@@ -112,11 +178,21 @@ QUnit.test( "Extends with variables inside2", function( assert ) {
         "var1": "value1",
         "var2": "value2",
         "var3": "value3"
-    }, null, {
+    }, {
         "base": "variable1 {{var1}} {% block content1 %}{% endblock %} another block {% block content2 %}{% endblock %} end."
     });
 
     assert.equal( rendered_template, "variable1 value1 variable2 value2 another block another variable value3 end." );
+});
+
+QUnit.test( "Extend and Include tag", function( assert ) {
+    var engine = new DjangoTemplateEngine({
+        "base": "variable1 {{var1}} {% block content %}{% endblock %} included text '{% include 'included_template' %}' variable5 {{var5}}",
+        "included_template": "variable3 {{var3}} variable4 {{var4}}",
+        "main_template": "{% extends 'base' %} {% block content %}variable2 {{var2}}{% endblock %}"});
+    var rendered_template = engine.renderToString("main_template", {"var1": "value1", "var2": "value2", "var3": "value3", "var4": "value4", "var5": "value5"});
+
+    assert.equal( rendered_template, "variable1 value1 variable2 value2 included text 'variable3 value3 variable4 value4' variable5 value5" );
 });
 
 QUnit.test( "If tag", function( assert ) {
@@ -961,7 +1037,7 @@ QUnit.test( "Tag load1", function( assert ) {
         return 'test';
     });
 
-    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{{ myvar|test }}", null, {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{{ myvar|test }}", null, null, {
         'libraries': {
             'mylib': library
         }
@@ -977,7 +1053,7 @@ QUnit.test( "Tag load2", function( assert ) {
         return kwargs.var1+ kwargs.var2;
     });
 
-    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{% test var1='value1' var2='value2' %}", null, {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{% test var1='value1' var2='value2' %}", null, null, {
         'libraries': {
             'mylib': library
         }
@@ -992,7 +1068,7 @@ QUnit.test( "Tag load3", function( assert ) {
         return var1+ var2;
     });
 
-    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{% test var1 'value2' %}", {'var1': 'value1'}, {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{% test var1 'value2' %}", {'var1': 'value1'}, null, {
         'libraries': {
             'mylib': library
         }
@@ -1007,7 +1083,7 @@ QUnit.test( "Tag load4", function( assert ) {
         return var1+ var2 + kwargs.var3;
     });
 
-    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{% test var1 var2 var3='value3' %}", {'var1': 'value1', 'var2': 'value2'}, {
+    var rendered_template = DjangoTemplateEngine.renderTemplate("{% load mylib %}{% test var1 var2 var3='value3' %}", {'var1': 'value1', 'var2': 'value2'}, null, {
         'libraries': {
             'mylib': library
         }

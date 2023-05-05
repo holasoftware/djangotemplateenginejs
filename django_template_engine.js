@@ -162,18 +162,21 @@ function __import(obj, src){
     return obj;
 }
 
-var objectGetPath = function( obj, path ){
-    var p = isArray(path) ? path : path.split(".");
-    for( var i=0, j=p.length; i<j; ++i )
-    if( !(obj = obj[ p[ i ] ]) )
-        break;
+
+var objectGetKeyPath = function( obj, keyPath ){
+    for( var i=0, j=keyPath.length; i<j; ++i )
+        if( !(obj = obj[ keyPath[ i ] ]) )
+            break;
+
     return obj;
 }
 
 var dictsort = function(value, key) {
+  var keyPath = isArray(key) ? key : key.split(".");
+  
   value.sort((a, b) => {
-    const aValue = objectGetPath(a, key);
-    const bValue = objectGetPath(b, key);
+    const aValue = objectGetKeyPath(a, keyPath);
+    const bValue = objectGetKeyPath(b, keyPath);
     if (aValue < bValue) {
       return -1;
     }
@@ -2125,7 +2128,7 @@ BaseContext.prototype.get = function( key, otherwise ){
     }
 
     if (found) {
-        return objectGetPath( topElement, pathKey.slice(1) );
+        return objectGetKeyPath( topElement, pathKey.slice(1) );
     } else {
         return otherwise;
     }
@@ -2179,7 +2182,7 @@ Context.prototype.newContext = function(values){
         use_l10n: this.useL10n,
         template: this.template,
         template_name: this.templateName,
-        renderContext: this.renderContext.copy()
+        render_context: this.renderContext.copy()
     });
 
     return c;
@@ -2292,8 +2295,8 @@ var TemplateEngine = function(templateSources, options){
     this.templateSources = templateSources || {};
 }
 
-TemplateEngine.renderTemplate = function(templateCode, context, options, otherTemplateSources){
-    var engine = new TemplateEngine(otherTemplateSources, options);
+TemplateEngine.renderTemplate = function(templateCode, context, otherTemplateSources, templateEngineOptions){
+    var engine = new TemplateEngine(otherTemplateSources, templateEngineOptions);
     return engine.renderTemplateString(templateCode, context)
 }
 
@@ -3031,6 +3034,7 @@ Variable.prototype.toString = function(){
     return "<Variable: " + this.variable + ">";
 }
 
+
 Variable.prototype._resolveLookup = function(context){
     /*
     Perform resolution of a real variable (i.e. not a literal) against the
@@ -3042,10 +3046,31 @@ Variable.prototype._resolveLookup = function(context){
     */
 
     if (context instanceof BaseContext){
-        return context.get(this.lookups, VARIABLE_DOES_NOT_EXISTS);
+        obj = context.get(this.lookups[0], VARIABLE_DOES_NOT_EXISTS);
+        if (obj === VARIABLE_DOES_NOT_EXISTS) return VARIABLE_DOES_NOT_EXISTS;
     } else {
-        return objectGetPath(context, this.lookups)
+        obj = context[this.lookups[0]];
     }
+
+    var p = this.lookups.slice(1);
+    for( var i=0, j=p.length; i<j; ++i ){
+        new_obj = obj[ p[ i ] ]
+        if( new_obj === undefined)
+            break;
+ 
+        if (isFunction(new_obj) && !new_obj.do_not_call_in_templates){
+            if (new_obj.alters_data){
+                // TODO
+                // current = context.template.engine.string_if_invalid
+                throw new Error('Variable alters data')
+            } else {          
+                new_obj = new_obj.call(obj);
+            }
+        }
+        
+        obj = new_obj;
+    }
+    return obj;
 }
 
 
@@ -4205,7 +4230,7 @@ InclusionNode.prototype.render = function(context){
     // protection to be as simple as possible.
     var csrf_token = context.get('csrf_token');
     if (csrf_token !== null){
-        new_context.get('csrf_token'. csrf_token);
+        new_context.set('csrf_token', csrf_token);
     }
     return t.render(new_context);
 }
@@ -4267,7 +4292,7 @@ var BlockContext = function(){
     this.blocks = {};
 }
 
-BlockContext.prototype.add_blocks = function(blocks){
+BlockContext.prototype.addBlocks = function(blocks){
     var self = this;
 
     Object.entries(blocks).forEach(function(entry){
@@ -4371,7 +4396,7 @@ BlockNode.prototype.super = function(){
 }
 
 var ExtendsNode = function(nodelist, parent_name){
-    this.nodelist = nodelist
+    this.nodelist = nodelist;
     this.parent_name = parent_name;
 
     var blocks = {};
@@ -4425,12 +4450,12 @@ ExtendsNode.prototype.render = function(context){
     var block_context = context.renderContext.get(BLOCK_CONTEXT_KEY);
 
     // Add the block nodes from this node to the block context
-    block_context.add_blocks(this.blocks);
+    block_context.addBlocks(this.blocks);
 
     // If this block's parent doesn't have an extends node it is the root, and its block nodes also need to be added to the block context.
     var nodelist = compiled_parent.nodelist;
-    for (var i =0, nodelist_length = nodelist.length; i<nodelist_length; i++) {
-        var node = nodelist[i];
+    for (var i =0, nodelist_length = nodelist.length(); i<nodelist_length; i++) {
+        var node = nodelist.nodes[i];
 
         // The ExtendsNode has to be the first non-text node.
         if (! (node instanceof TextNode)){
@@ -4440,7 +4465,7 @@ ExtendsNode.prototype.render = function(context){
                     blocks[node.name] = node;
                 });
 
-                block_context.add_blocks(blocks);
+                block_context.addBlocks(blocks);
             }
             break
         }
